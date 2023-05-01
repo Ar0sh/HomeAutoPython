@@ -17,8 +17,6 @@ def _callback(pkg):
     if data is None:
         return
     MqttClass("TibberLive/").sendtomqtt(data.get("liveMeasurement").items())
-    #for signal, values in data.get("liveMeasurement").items():
-    #    print(signal, " ", values)
 
 
 class MqttClass:
@@ -27,13 +25,12 @@ class MqttClass:
         self.basetopic = base
 
     def sendtomqtt(self, data):
-        for signal, values in data:
-            mqtt_client.publish(self.mqttclient, ''.join([self.basetopic, signal.capitalize()]), values)
+        mqtt_client.publishmany(self.mqttclient, self.basetopic, data)
 
 
 async def run():
     async with aiohttp.ClientSession() as session:
-        tibber_connection = tibber.Tibber(ACCESS_TOKEN, websession=session, user_agent="Heimen", time_zone=datetime.timezone.utc)
+        tibber_connection = tibber.Tibber(ACCESS_TOKEN, websession=session, user_agent="Heimen2", time_zone=datetime.timezone.utc)
         await tibber_connection.update_info()
     home = tibber_connection.get_homes()[0]
     await home.rt_subscribe(_callback)

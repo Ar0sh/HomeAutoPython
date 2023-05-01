@@ -21,8 +21,15 @@ def connect_mqtt():
 
 
 def publish(client, topic, data):
-    client.publish(topic, data)
+    if data is not None:
+        client.publish(topic, data)
 
 
-#test = connect_mqtt()
-#publish(test)
+def publishmany(client, basetopic, data):
+    for signal, values in data:
+        if values is not None:
+            client.publish(''.join([basetopic, signal.capitalize()]), values)
+        time.sleep(2/1000)
+
+# test = connect_mqtt()
+# publish(test)
