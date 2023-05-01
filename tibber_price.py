@@ -107,11 +107,13 @@ def main():
     scrts = SnittprisScrts()
     while True:
         data = TibberAPIdata(scrts.getbearer())
+        time.sleep(5)
         if len(data.prices) in [23, 24, 25]:
             break
         write_file('log.txt', '[' + str(datetime.datetime.now()) + '][Price]: No price found! Sleeping for 5 min!')
         time.sleep(60*5)        # Sleep for 5 min if no prices found.
     SqlClass(scrts.getip(), scrts.getusr(), scrts.getpwd(), scrts.getdb(), 'mysql_native_password').storetosql(data.prices)
+    write_file('log.txt', '[' + str(datetime.datetime.now()) + '][Price]: Todays prices stored!')
 
 
 if __name__ == "__main__":
