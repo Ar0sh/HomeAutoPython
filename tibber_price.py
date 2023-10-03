@@ -103,17 +103,41 @@ def write_file(filename, data, delete=False):
         print('[' + str(datetime.datetime.now()) + '][FILEERR]: ' + str(e))
 
 
-def main():
-    scrts = SnittprisScrts()
+def calcmaxminavg(prices):
+    sums = 0
+    maxp = -100
+    maxt = ""
+    minp = 100
+    mint = ""
+    for price in prices:
+        sums += price[1]
+        if price[1] > maxp:
+            maxp = price[1]
+            maxt = str(datetime.datetime.strptime(str(price[0]).split('+')[0], '%Y-%m-%dT%H:%M:%S.%f'))
+        if minp > price[1]:
+            minp = price[1]
+            mint = str(datetime.datetime.strptime(str(price[0]).split('+')[0], '%Y-%m-%dT%H:%M:%S.%f'))
+    return [maxp, maxt, minp, mint, (sums/len(prices)).__round__(3)]
+
+
+def fetchdata(secrets):
     while True:
-        data = TibberAPIdata(scrts.getbearer())
-        time.sleep(5)
+        data = TibberAPIdata(secrets.getbearer())
         if len(data.prices) in [23, 24, 25]:
             break
         write_file('log.txt', '[' + str(datetime.datetime.now()) + '][Price]: No price found! Sleeping for 5 min!')
         time.sleep(60*5)        # Sleep for 5 min if no prices found.
-    SqlClass(scrts.getip(), scrts.getusr(), scrts.getpwd(), scrts.getdb(), 'mysql_native_password').storetosql(data.prices)
-    write_file('log.txt', '[' + str(datetime.datetime.now()) + '][Price]: Todays prices stored!')
+    maxminavg = calcmaxminavg(data.prices)
+    SqlClass(secrets.getip(), secrets.getusr(), secrets.getpwd(), secrets.getdb(), 'mysql_native_password').storetosql(data.prices)
+    write_file('log.txt', '[' + str(datetime.datetime.now().__format__('%Y-%m-%dT%H:%M:%S')) + '][Price]: Todays prices stored!')
+    write_file('log.txt', '[' + str(datetime.datetime.now().__format__('%Y-%m-%dT%H:%M:%S')) + '][MAX]: ' + str(maxminavg[1].split(' ')[1]) + ' ' + str(maxminavg[0]) + "kr")
+    write_file('log.txt', '[' + str(datetime.datetime.now().__format__('%Y-%m-%dT%H:%M:%S')) + '][MIN]: ' + str(maxminavg[3].split(' ')[1]) + ' ' + str(maxminavg[2]) + "kr")
+    write_file('log.txt', '[' + str(datetime.datetime.now().__format__('%Y-%m-%dT%H:%M:%S')) + '][AVG]: ' + str(maxminavg[4]) + "kr")
+
+
+def main():
+    scrts = SnittprisScrts()
+    fetchdata(scrts)
 
 
 if __name__ == "__main__":
