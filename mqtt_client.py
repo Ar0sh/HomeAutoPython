@@ -1,8 +1,11 @@
 import time
 from paho.mqtt import client as mqtt_client
 import random
+from mysecrets import SnittprisScrts
 
-broker = '192.168.1.161'
+scrt = SnittprisScrts()
+
+broker = scrt.getip()
 port = 1883
 client_id = f'python-mqtt-{random.randint(0, 1000)}'
 
@@ -30,6 +33,3 @@ def publishmany(client, basetopic, data):
         if values is not None:
             client.publish(''.join([basetopic, signal.capitalize()]), values)
         time.sleep(2/1000)
-
-# test = connect_mqtt()
-# publish(test)
