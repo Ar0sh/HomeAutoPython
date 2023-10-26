@@ -1,3 +1,6 @@
 /mysecrets.py
 /log.txt
 .idea/
+/__pycache__/
+/venv/
+/venv311/
