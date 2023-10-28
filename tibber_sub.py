@@ -28,24 +28,25 @@ class MqttClass:
         mqtt_client.publishmany(self.mqttclient, self.basetopic, data)
 
 
-async def run():
+async def subscribe():
     async with aiohttp.ClientSession() as session:
         tibber_connection = tibber.Tibber(ACCESS_TOKEN, websession=session, user_agent="Heimen2", time_zone=datetime.timezone.utc)
         await tibber_connection.update_info()
     home = tibber_connection.get_homes()[0]
     await home.rt_subscribe(_callback)
 
-    while True:
-        await asyncio.sleep(10)
 
-
-def main():
-    try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(run())
-    except KeyboardInterrupt as ex:
-        print(ex)
+async def main():
+    tasks = [subscribe(), asyncio.sleep(10)]
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        loop = asyncio.get_event_loop()
+        loop.create_task(main())
+        loop.run_forever()
+    except KeyboardInterrupt as ex:
+        print(ex)
+    finally:
+        loop.close()
