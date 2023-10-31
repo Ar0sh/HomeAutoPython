@@ -2,6 +2,7 @@ import json
 import requests
 import mysql.connector
 import datetime
+import asyncio
 import os
 import time
 from mysecrets import SnittprisScrts
@@ -9,7 +10,7 @@ from mysecrets import SnittprisScrts
 
 class TibberAPIdata:
     def __init__(self, bearer):
-        self._graphurl = "https://api.tibber.com/v1-beta/gql"
+        self._graph_url = "https://api.tibber.com/v1-beta/gql"
         self._headers = {
             'Authorization': 'Bearer ' + bearer,
             'Content-Type': 'application/json'
@@ -21,60 +22,63 @@ class TibberAPIdata:
                      '{ time total tax level energy difference __typename }' \
                      '}}}}}}" }'
         self.prices = []
-        self._getapidata()
 
-    def _getapidata(self):
+    async def get_api_data(self):
         try:
-            tmp = requests.post(self._graphurl, headers=self._headers, data=self._data).content
-            jsondata = json.loads(tmp)
-            data = {'data': jsondata['data']['viewer']['homes'][0]['currentSubscription']['priceRating']['hourly']['entries']}
-            datenow = datetime.datetime.now().date()
-            for value in data.values():
-                for y in value:
-                    if str.split(y['time'], 'T')[0] == str(datenow + datetime.timedelta(days=1)):
-                        self.prices.append((
-                                y['time'],
-                                round(y['total'], 3),
-                                round(y['tax'], 3),
-                                y['level'],
-                                round(y['energy'], 3),
-                                round(y['difference'], 3),
-                                y['__typename']
-                            ))
+            response = requests.post(self._graph_url, headers=self._headers, data=self._data)
+            response.raise_for_status()  # Raises a HTTPError if the response status is 4xx, 5xx
+            json_data = response.json()
+            data = json_data['data']['viewer']['homes'][0]['currentSubscription']['priceRating']['hourly']['entries']
+            date_now = datetime.datetime.now().date()
+            self.prices = [
+                (
+                    y['time'],
+                    round(y['total'], 3),
+                    round(y['tax'], 3),
+                    y['level'],
+                    round(y['energy'], 3),
+                    round(y['difference'], 3),
+                    y['__typename']
+                )
+                for y in data
+                if str.split(y['time'], 'T')[0] == str(date_now + datetime.timedelta(days=1))
+            ]
+        except requests.exceptions.HTTPError as e:
+            write_file('log.txt', f'[{datetime.datetime.now()}][HTTP_ERR]: {e}')
         except Exception as e:
-            write_file('log.txt', '[' + str(datetime.datetime.now()) + '][GETAPI]: ' + str(e))
+            write_file('log.txt', f'[{datetime.datetime.now()}][GET_API]: {e}')
 
 
 class SqlClass:
-    def __init__(self, host, user, passwd, database, authplugin):
-        self._mydb = mysql.connector.connect(
+    def __init__(self, host, user, passwd, database, auth_plugin):
+        self._my_db = mysql.connector.connect(
             host=host,
             user=user,
             password=passwd,
             database=database,
-            auth_plugin=authplugin
+            auth_plugin=auth_plugin
         )
 
-    def storetosql(self, _allprices):
+    def store_to_sql(self, _all_prices):
         try:
-            mycursor = self._mydb.cursor()
-            for price in _allprices:
-                try:
-                    sql = "INSERT INTO TibberPrices (time, total, tax, level, energy, difference) VALUES (%s, %s, %s, %s, %s, %s)"
-                    val = (str(datetime.datetime.strptime(str(price[0]).split('+')[0], '%Y-%m-%dT%H:%M:%S.%f')),
-                           price[1],
-                           price[2],
-                           price[3],
-                           price[4],
-                           price[5])
-                    mycursor.execute(sql, val)
-                    self._mydb.commit()
-                except Exception as e:
-                    write_file('log.txt', '[' + str(datetime.datetime.now()) + '][MYSQL_DUPLICATE]: ' + str(e))
+            with self._my_db.cursor() as my_cursor:
+                for price in _all_prices:
+                    try:
+                        sql = "INSERT INTO TibberPrices (time, total, tax, level, energy, difference) VALUES (%s, %s, %s, %s, %s, %s)"
+                        val = (str(datetime.datetime.strptime(str(price[0]).split('+')[0], '%Y-%m-%dT%H:%M:%S.%f')),
+                            price[1],
+                            price[2],
+                            price[3],
+                            price[4],
+                            price[5])
+                        my_cursor.execute(sql, val)
+                        self._my_db.commit()
+                    except Exception as e:
+                        write_file('log.txt', f'[{datetime.datetime.now()}][MYSQL_DUPLICATE]: {e}')
         except mysql.connector.errors.IntegrityError as e:
-            write_file('log.txt', '[' + str(datetime.datetime.now()) + '][MYSQL]: ' + str(e.msg))
+            write_file('log.txt', f'[{datetime.datetime.now()}][MYSQL]: {e}')
         except Exception as e:
-            write_file('log.txt', '[' + str(datetime.datetime.now()) + '][MYSQL_GENERIC]: ' + str(e))
+            write_file('log.txt', f'[{datetime.datetime.now()}][MYSQL_GENERIC]: {e}')
 
 
 def write_file(filename, data, delete=False):
@@ -100,45 +104,39 @@ def write_file(filename, data, delete=False):
             f.write(data)
             f.close()
     except Exception as e:
-        print('[' + str(datetime.datetime.now()) + '][FILEERR]: ' + str(e))
+        print(f'[{datetime.datetime.now()}][FILE_ERR]: {e}')
 
 
-def calcmaxminavg(prices):
-    sums = 0
-    maxp = -100
-    maxt = ""
-    minp = 100
-    mint = ""
-    for price in prices:
-        sums += price[1]
-        if price[1] > maxp:
-            maxp = price[1]
-            maxt = str(datetime.datetime.strptime(str(price[0]).split('+')[0], '%Y-%m-%dT%H:%M:%S.%f'))
-        if minp > price[1]:
-            minp = price[1]
-            mint = str(datetime.datetime.strptime(str(price[0]).split('+')[0], '%Y-%m-%dT%H:%M:%S.%f'))
-    return [maxp, maxt, minp, mint, (sums/len(prices)).__round__(3)]
+def calc_max_min_avg(prices):
+    price_values = [price[1] for price in prices]
+    price_times = [datetime.datetime.strptime(str(price[0]).split('+')[0], '%Y-%m-%dT%H:%M:%S.%f') for price in prices]
+    max_price = max(price_values)
+    max_time = str(price_times[price_values.index(max_price)])
+    min_price = min(price_values)
+    min_time = str(price_times[price_values.index(min_price)])
+    avg_price = round(sum(price_values) / len(price_values), 3)
+    return [max_price, max_time, min_price, min_time, avg_price]
 
-
-def fetchdata(secrets):
+async def fetch_data(secrets):
     while True:
-        data = TibberAPIdata(secrets.getbearer())
-        if len(data.prices) in [23, 24, 25]:
+        tibber_api = TibberAPIdata(secrets.getbearer())
+        await tibber_api.get_api_data()
+        if len(tibber_api.prices) in [23, 24, 25]:
             break
-        write_file('log.txt', '[' + str(datetime.datetime.now()) + '][Price]: No price found! Sleeping for 5 min!')
-        time.sleep(60*5)        # Sleep for 5 min if no prices found.
-    maxminavg = calcmaxminavg(data.prices)
-    SqlClass(secrets.getip(), secrets.getusr(), secrets.getpwd(), secrets.getdb(), 'mysql_native_password').storetosql(data.prices)
-    write_file('log.txt', '[' + str(datetime.datetime.now().__format__('%Y-%m-%dT%H:%M:%S')) + '][Price]: Todays prices stored!')
-    write_file('log.txt', '[' + str(datetime.datetime.now().__format__('%Y-%m-%dT%H:%M:%S')) + '][MAX]: ' + str(maxminavg[1].split(' ')[1]) + ' ' + str(maxminavg[0]) + "kr")
-    write_file('log.txt', '[' + str(datetime.datetime.now().__format__('%Y-%m-%dT%H:%M:%S')) + '][MIN]: ' + str(maxminavg[3].split(' ')[1]) + ' ' + str(maxminavg[2]) + "kr")
-    write_file('log.txt', '[' + str(datetime.datetime.now().__format__('%Y-%m-%dT%H:%M:%S')) + '][AVG]: ' + str(maxminavg[4]) + "kr")
+        write_file('log.txt', f'[{datetime.datetime.now()}][Price]: No price found! Sleeping for 5 min!')
+        await asyncio.sleep(60*5)        # Sleep for 5 min if no prices found.
+    max_min_avg = calc_max_min_avg(tibber_api.prices)
+    SqlClass(secrets.getip(), secrets.getusr(), secrets.getpwd(), secrets.getdb(), 'mysql_native_password').store_to_sql(tibber_api.prices)
+    write_file('log.txt', f'[{datetime.datetime.now()}][Price]: Todays prices stored!')
+    write_file('log.txt', f"[{datetime.datetime.now()}][MAX]: {max_min_avg[1].split(' ')[1]} {max_min_avg[0]}kr")
+    write_file('log.txt', f"[{datetime.datetime.now()}][MIN]: {max_min_avg[3].split(' ')[1]} {max_min_avg[2]}kr")
+    write_file('log.txt', f'[{datetime.datetime.now()}][AVG]: {max_min_avg[4]}kr')
 
 
-def main():
+async def main():
     scrts = SnittprisScrts()
-    fetchdata(scrts)
+    await fetch_data(scrts)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
