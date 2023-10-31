@@ -3,39 +3,36 @@ import datetime
 import mqtt_client
 from mysecrets import SnittprisScrts
 
-scrt = SnittprisScrts()
+secrets = SnittprisScrts()
 
 
 def main():
     try:
-        mqttclient = mqtt_client.connect_mqtt()
+        client = mqtt_client.connect_mqtt()
         with mysql.connector.connect(
-            host=scrt.getip(),
-            user=scrt.getusr(),
-            password=scrt.getpwd(),
-            database=scrt.getdb(),
+            host=secrets.getip(),
+            user=secrets.getusr(),
+            password=secrets.getpwd(),
+            database=secrets.getdb(),
             auth_plugin='mysql_native_password'
-        ) as mydb:
-            datenow = datetime.datetime.now().date()
-            hournow, _ = divmod(datetime.datetime.now().hour - 1, 24)
-            with mydb.cursor() as mycursor:
+        ) as my_db:
+            date_now = datetime.datetime.now().date()
+            _, hour_now = divmod(datetime.datetime.now().hour, 24)
+            with my_db.cursor() as my_cursor:
                 sql = f"SELECT * FROM OpenHAB2.tibbermqtt_dailyaccumulatedconsumption_0361 " \
-                      f"WHERE time >= '{datenow} {hournow:02d}:01:00' " \
+                      f"WHERE time >= '{date_now} {hour_now:02d}:01:00' " \
                       f"ORDER BY time DESC;"
-                mycursor.execute(sql)
-                result = mycursor.fetchall()
+                my_cursor.execute(sql)
+                result = my_cursor.fetchall()
                 try:
-                    numbertosend = result[0][1] - result[-1][1]
+                    number_to_send = result[0][1] - result[-1][1]
                 except IndexError:
-                    numbertosend = 0
-                mqtt_client.publish(mqttclient, "elec/python/mqtt/accumulatedhourlyconsumption", numbertosend)
-                print(f"Published {numbertosend} to mqtt.")
+                    number_to_send = 0
+                mqtt_client.publish(client, "elec/python/mqtt/accumulatedhourlyconsumption", number_to_send)
     except mysql.connector.errors.IntegrityError as e:
         print(e.msg)
     except Exception as e:
         print(e)
-    else:
-        print("Data published successfully.")
 
 
 if __name__ == "__main__":
