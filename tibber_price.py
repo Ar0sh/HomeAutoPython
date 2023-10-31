@@ -83,6 +83,9 @@ class SqlClass:
 
 def write_file(filename, data, delete=False):
     try:
+        if not os.path.exists(filename):
+            with open(filename, "a") as f:
+                f.write(f'[{datetime.datetime.now()}][MAKE_FILE]: New file created.')
         if delete and os.path.isfile(filename):
             os.remove(filename)
             return
@@ -95,14 +98,8 @@ def write_file(filename, data, delete=False):
                     for number, line in enumerate(lines):
                         if number not in range(0, 10, 1):
                             log.write(line)
-        if os.path.isfile(filename):
-            with open(filename, 'a') as f:
-                f.write('\n' + data)
-                f.close()
-            return
-        with open(filename, 'w') as f:
-            f.write(data)
-            f.close()
+        with open(filename, 'a') as f:
+            f.write(f'\n{data}')
     except Exception as e:
         print(f'[{datetime.datetime.now()}][FILE_ERR]: {e}')
 
