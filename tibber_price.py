@@ -63,6 +63,7 @@ class SqlClass:
         try:
             with self._my_db.cursor() as my_cursor:
                 for price in _all_prices:
+                    
                     try:
                         sql = "INSERT INTO TibberPrices (time, total, tax, level, energy, difference) VALUES (%s, %s, %s, %s, %s, %s)"
                         val = (str(datetime.datetime.strptime(str(price[0]).split('+')[0], '%Y-%m-%dT%H:%M:%S.%f')),
