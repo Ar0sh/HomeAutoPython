@@ -83,7 +83,6 @@ class SqlClass:
 
 def write_file(filename, data, delete=False):
     try:
-        
         if not os.path.exists(filename):
             with open(filename, "a") as f:
                 f.write(f'[{datetime.datetime.now()}][MAKE_FILE]: New file created.')
