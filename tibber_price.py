@@ -23,6 +23,7 @@ class TibberAPIdata:
                      '}}}}}}" }'
         self.prices = []
 
+
     async def get_api_data(self):
         try:
             response = requests.post(self._graph_url, headers=self._headers, data=self._data)
@@ -123,7 +124,7 @@ async def fetch_data(secrets):
         write_file('log.txt', f'[{datetime.datetime.now()}][Price]: No price found! Sleeping for 5 min!')
         await asyncio.sleep(60*5)        # Sleep for 5 min if no prices found.
     max_min_avg = calc_max_min_avg(tibber_api.prices)
-    SqlClass(secrets.getip(), secrets.getusr(), secrets.getpwd(), secrets.getdb(), 'mysql_native_password').store_to_sql(tibber_api.prices)
+    #SqlClass(secrets.getip(), secrets.getusr(), secrets.getpwd(), secrets.getdb(), 'mysql_native_password').store_to_sql(tibber_api.prices)
     write_file('log.txt', f'[{datetime.datetime.now()}][Price]: Todays prices stored!')
     write_file('log.txt', f"[{datetime.datetime.now()}][MAX]: {max_min_avg[1].split(' ')[1]} {max_min_avg[0]}kr")
     write_file('log.txt', f"[{datetime.datetime.now()}][MIN]: {max_min_avg[3].split(' ')[1]} {max_min_avg[2]}kr")
