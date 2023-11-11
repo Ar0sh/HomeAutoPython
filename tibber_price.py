@@ -23,7 +23,6 @@ class TibberAPIdata:
                      '}}}}}}" }'
         self.prices = []
 
-
     async def get_api_data(self):
         try:
             response = requests.post(self._graph_url, headers=self._headers, data=self._data)
