@@ -1,6 +1,5 @@
 import tibber.const
 import asyncio
-
 import aiohttp
 import tibber
 import datetime

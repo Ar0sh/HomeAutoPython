@@ -1,4 +1,3 @@
-import math
 import mysql.connector
 import datetime
 import os
@@ -17,6 +16,7 @@ class Calculation:
         self._default = [["gjennomsnitt", 1], ["low", 1], ["high", 1], ["price", 1]]
         self.avg_std = {"now": self._default, "future": self._default}
         self._calculate()
+        
 
     def _calculate(self):
         self.avg_std["now"] = self._average_std_var_func(self._now_index)
