@@ -64,13 +64,17 @@ class SqlClass:
             with self._my_db.cursor() as my_cursor:
                 for price in _all_prices:
                     try:
-                        sql = "INSERT INTO TibberPrices (time, total, tax, level, energy, difference) VALUES (%s, %s, %s, %s, %s, %s)"
-                        val = (str(datetime.datetime.strptime(str(price[0]).split('+')[0], '%Y-%m-%dT%H:%M:%S.%f')),
+                        reduction = self.calculate_reduction(price[4])
+                        actual = self.calculate_actual_price(price[1], reduction)
+                        sql = "INSERT INTO TibberPrices (time, total, tax, level, energy, difference, reduction, actual) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+                        val = (str(datetime.datetime.strptime(str(price[0]).split('+', maxsplit=1)[0], '%Y-%m-%dT%H:%M:%S.%f')),
                             price[1],
                             price[2],
                             price[3],
                             price[4],
-                            price[5])
+                            price[5],
+                            reduction,
+                            actual)
                         my_cursor.execute(sql, val)
                         self._my_db.commit()
                     except Exception as e:
@@ -80,21 +84,28 @@ class SqlClass:
         except Exception as e:
             write_file('log.txt', f'[{datetime.datetime.now()}][MYSQL_GENERIC]: {e}')
 
+    def calculate_reduction(self, price):
+        if price > 0.70:
+            return round((price - 0.70) * 0.9 * 1.25, 2)
+        return 0
+    
+    def calculate_actual_price(self, price, reduction):
+        return round(price - reduction, 2)
 
 def write_file(filename, data, delete=False):
     try:
         if not os.path.exists(filename):
-            with open(filename, "a") as f:
+            with open(filename, "a", encoding='utf-8') as f:
                 f.write(f'[{datetime.datetime.now()}][MAKE_FILE]: New file created.')
         if delete and os.path.isfile(filename):
             os.remove(filename)
             return
         if filename == 'log.txt':
             print(data)
-            with open(filename, 'r') as log:
+            with open(filename, 'r', encoding='utf-8') as log:
                 lines = log.readlines()
             if len(lines) > 100:
-                with open(filename, 'w') as log:
+                with open(filename, 'w', encoding='utf-8') as log:
                     for number, line in enumerate(lines):
                         if number not in range(0, 10, 1):
                             log.write(line)
@@ -123,7 +134,7 @@ async def fetch_data(secrets):
         write_file('log.txt', f'[{datetime.datetime.now()}][Price]: No price found! Sleeping for 5 min!')
         await asyncio.sleep(60*5)        # Sleep for 5 min if no prices found.
     max_min_avg = calc_max_min_avg(tibber_api.prices)
-    #SqlClass(secrets.getip(), secrets.getusr(), secrets.getpwd(), secrets.getdb(), 'mysql_native_password').store_to_sql(tibber_api.prices)
+    SqlClass(secrets.getip(), secrets.getusr(), secrets.getpwd(), secrets.getdb(), 'mysql_native_password').store_to_sql(tibber_api.prices)
     write_file('log.txt', f'[{datetime.datetime.now()}][Price]: Todays prices stored!')
     write_file('log.txt', f"[{datetime.datetime.now()}][MAX]: {max_min_avg[1].split(' ')[1]} {max_min_avg[0]}kr")
     write_file('log.txt', f"[{datetime.datetime.now()}][MIN]: {max_min_avg[3].split(' ')[1]} {max_min_avg[2]}kr")

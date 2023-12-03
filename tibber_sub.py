@@ -26,7 +26,7 @@ class TibberClass:
         await home.rt_subscribe(self._callback)
 
 
-    async def main(self):
+    async def run(self):
         tasks = [self.subscribe(), asyncio.sleep(10)]
         await asyncio.gather(*tasks)
 
@@ -34,7 +34,7 @@ class TibberClass:
 if __name__ == "__main__":
     try:
         loop = asyncio.get_event_loop()
-        loop.create_task(TibberClass().main())
+        loop.create_task(TibberClass().run())
         loop.run_forever()
     except KeyboardInterrupt as ex:
         print(ex)
