@@ -1,6 +1,6 @@
 import mysql.connector
 import datetime
-import mqtt_client
+from mqtt_client import MqttClient
 from mysecrets import SnittprisScrts
 
 secrets = SnittprisScrts()
@@ -8,7 +8,8 @@ secrets = SnittprisScrts()
 
 def main():
     try:
-        client = mqtt_client.connect_mqtt()
+        mqttclient = MqttClient()
+        client = mqttclient.connect_mqtt()
         with mysql.connector.connect(
             host=secrets.getip(),
             user=secrets.getusr(),
@@ -28,7 +29,7 @@ def main():
                     number_to_send = result[0][1] - result[-1][1]
                 except IndexError:
                     number_to_send = 0
-                mqtt_client.publish(client, "elec/python/mqtt/accumulatedhourlyconsumption", number_to_send)
+                mqttclient.publish(client, "elec/python/mqtt/accumulatedhourlyconsumption", number_to_send)
     except mysql.connector.errors.IntegrityError as e:
         print(e.msg)
     except Exception as e:
