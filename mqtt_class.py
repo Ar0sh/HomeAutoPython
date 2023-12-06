@@ -1,4 +1,5 @@
 import datetime
+import asyncio
 from mqtt_client import MqttClient
 from writefile import TibberWriteFile
 
@@ -11,6 +12,6 @@ class MqttClass:
 
     def sendtomqtt(self, data, tolower=False):
         try:
-            self.mqtt_client.publishmany(self.mqttclient, self.basetopic, data, tolower)
+            asyncio.run(self.mqtt_client.publishmany(self.mqttclient, self.basetopic, data, tolower))
         except Exception as e:
             TibberWriteFile().write_file('log.txt', f'[{datetime.datetime.now()}][MQTT]: {e}')

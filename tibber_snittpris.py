@@ -11,7 +11,8 @@ def run(start=14, end=9):
         sql_class = SqlClass(secrets.getip(), secrets.getusr(), secrets.getpwd(), secrets.getdb(), 'mysql_native_password', start)
         sql_class.get_data(start, end)
         processed_data = Calculation(sql_class.data, start)
-        MqttClass("elec/python/mqtt/").sendtomqtt(processed_data.avg_std["now"], tolower=True)
+        mqtt = MqttClass("elec/python/mqtt/")
+        mqtt.sendtomqtt(processed_data.avg_std["now"], tolower=True)
         sql_class.store_to_sql(sql_class.data, processed_data.avg_std)
     except KeyboardInterrupt as ki:
         TibberWriteFile().write_file('log.txt', f'[{datetime.datetime.now()}][INTERRUPT]: {ki}')
