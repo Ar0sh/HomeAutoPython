@@ -1,5 +1,6 @@
 import random
 import asyncio
+import time
 from paho.mqtt import client as mqtt_client
 from mysecrets import SnittprisScrts
 
@@ -35,4 +36,4 @@ class MqttClient:
                 signal = signal.capitalize()
             if values is not None:
                 client.publish(''.join([basetopic, signal]), values)
-            await asyncio.sleep(2/1000)
+            await asyncio.sleep(50/1000)
