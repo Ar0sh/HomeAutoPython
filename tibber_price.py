@@ -90,7 +90,7 @@ class SqlClass:
         return 0
     
     def calculate_actual_price(self, price, reduction):
-        return round(price - reduction, 2)
+        return round(price - reduction, 3)
 
 def write_file(filename, data, delete=False):
     try:
